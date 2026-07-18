@@ -14,55 +14,122 @@ SetKeyDelay, -1
 SetMouseDelay, 10
 SetWinDelay, -1
 SetControlDelay, -1
-SetDefaultMouseSpeed, 20   ; makes ALL mouse movement (incl. plain Click) glide instead of teleporting
+SetDefaultMouseSpeed, 20 ; makes ALL mouse movement glide
 
 Running := false
 IsRecording := false
 TotalRounds := 0
 LastActionTime := 0
-Steps := []                          ; real array of step objects (fixes pseudo-array bugs)
-TargetWinExe := ""                   ; process name of the window we recorded against
-TargetWinTitle := ""                 ; title of that window (fallback matching)
-SettingsFile := A_ScriptDir "\macro_tool_settings.ini"   ; remembers last folder used, nothing else
+Steps := [] 
+TargetWinExe := "" 
+TargetWinTitle := "" 
+SettingsFile := A_ScriptDir "\macro_tool_settings.ini" 
 IniRead, LastMacroDir, %SettingsFile%, Config, LastDir, %A_ScriptDir%
 
-; Keys that can be recorded (extend/shrink as needed).
-; NOTE: F1-F4 and "j" are excluded because they are already used to control the tool itself.
 RecordKeys := "1,2,3,4,5,6,7,8,9,0"
-    . ",Numpad1,Numpad2,Numpad3,Numpad4,Numpad5,Numpad6,Numpad7,Numpad8,Numpad9,Numpad0"
-    . ",a,b,c,d,e,f,g,h,i,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z"
-    . ",Space,Enter,Escape,Tab,Backspace,Delete"
-    . ",Up,Down,Left,Right"
-    . ",F5,F6,F7,F8,F9,F10,F11,F12"
+. ",Numpad1,Numpad2,Numpad3,Numpad4,Numpad5,Numpad6,Numpad7,Numpad8,Numpad9,Numpad0"
+. ",a,b,c,d,e,f,g,h,i,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z"
+. ",Space,Enter,Escape,Tab,Backspace,Delete"
+. ",Up,Down,Left,Right"
+. ",F5,F6,F7,F8,F9,F10,F11,F12"
 
-; ===== GUI =====
-Gui, +AlwaysOnTop +ToolWindow -MaximizeBox -MinimizeBox +HwndToolHwnd
-Gui, Font, s10, Segoe UI
-Gui, Add, Text, w260 Center vStatus, Status : Stopped
-Gui, Add, Text, w260 Center vAction, Action : Waiting...
-Gui, Add, Text, w260 Center vRoundCount, Completed : 0 Rounds
-Gui, Add, Text, w260 Center vRecStatus, Recorded Steps : 0
-Gui, Add, Text, w260 Center vTargetWinText, Target Window : (none)
+; ==========================================
+#Tippy:="Modern UI Dashboard"
+; ==========================================
+Gui, +AlwaysOnTop -MaximizeBox -MinimizeBox -Caption +LastFound +HwndToolHwnd
+Gui, Color, 181824 ; Deep charcoal slate background
 
-; Bot Controls
-Gui, Add, Button, x10 w120 h35 gStartScript, Start (F3)
-Gui, Add, Button, x+20 w120 h35 gStopScript, Stop (F4)
+; Title Bar Control (Allows dragging the window without caption bar)
+Gui, Font, s11 Bold cFFFFFF q5, Segoe UI
+Gui, Add, Text, x0 y0 w260 h35 +Background252538 +0x200 Center gWM_LBUTTONDOWN, AUTO FARM DASHBOARD
+Gui, Font, s9 cFF5555
+Gui, Add, Text, x260 y0 w30 h35 +Background252538 +0x200 Center gCloseGui, X
 
-; Recorder Controls
-Gui, Add, Button, x10 y165 w120 h30 gStartRecord, Record (F1)
-Gui, Add, Button, x+20 w120 h30 gStopRecord, Stop Rec (F2)
+; ----- STATUS MONITOR -----
+Gui, Font, s9 c888A94 Normal q5, Segoe UI
+Gui, Add, Text, x15 y48 w260, STATUS:
+Gui, Font, s10 Bold c50FA7B q5
+Gui, Add, Text, x15 y65 w260 vStatus, Stopped
 
-; Storage Controls
-Gui, Add, Button, x10 y200 w120 h30 gSaveMacro, Save Macro
-Gui, Add, Button, x+20 w120 h30 gLoadMacro, Load Macro
+Gui, Font, s9 c888A94 Normal q5
+Gui, Add, Text, x15 y90 w260, SYSTEM ACTION:
+Gui, Font, s10 Bold cFFB86C q5
+Gui, Add, Text, x15 y107 w260 vAction, Waiting...
 
-Gui, Show,, Auto Farm + Macro Storage
+; Info Grid 
+Gui, Font, s9 c888A94 Normal q5
+Gui, Add, Text, x15 y135 w130, Loops Completed:
+Gui, Add, Text, x155 y135 w130, Recorded Steps:
+Gui, Font, s9 Bold cFFFFFF q5
+Gui, Add, Text, x15 y152 w130 vRoundCount, 0 Rounds
+Gui, Add, Text, x155 y152 w130 vRecStatus, 0 Steps
 
-; Register Hotkeys (Off by default)
+Gui, Font, s8 c888A94 Normal q5
+Gui, Add, Text, x15 y178 w260 vTargetWinText, Target Window: (none)
+
+; Section Divider Line
+Gui, Add, Text, x15 y198 w260 h1 +Background44475A
+
+; ----- CONTROLS SECTION -----
+Gui, Font, s9 Bold cFFFFFF q5
+
+; Bot Row
+Gui, Add, Text, x15 y210 w125 h32 Center +Background343746 +0x200 vBtnStart gStartScript, Start (F3)
+Gui, Add, Text, x150 y210 w125 h32 Center +Background343746 +0x200 vBtnStop gStopScript, Stop (F4)
+
+; Recorder Row
+Gui, Add, Text, x15 y250 w125 h32 Center +Background343746 +0x200 vBtnRec gStartRecord, Record (F1)
+Gui, Add, Text, x150 y250 w125 h32 Center +Background343746 +0x200 vBtnStopRec gStopRecord, Stop Rec (F2)
+
+; Storage Row
+Gui, Add, Text, x15 y290 w125 h32 Center +Background343746 +0x200 vBtnSave gSaveMacro, Save Macro
+Gui, Add, Text, x150 y290 w125 h32 Center +Background343746 +0x200 vBtnLoad gLoadMacro, Load Macro
+
+Gui, Show, w290 h340, Auto Farm + Macro Storage
+
+; Track Mouse Hover effects across controls
+OnMessage(0x200, "WM_MOUSEMOVE")
+
 Hotkey, ~*LButton, MouseClicked, Off
 Loop, Parse, RecordKeys, `,
     Hotkey, ~*%A_LoopField%, KeyPressed, Off
 return
+
+; ===== Hover Effects and Dragging UI Systems =====
+WM_LBUTTONDOWN() {
+    PostMessage, 0xA1, 2,,, A ; Allows dragging the frameless window
+}
+
+WM_MOUSEMOVE(wParam, lParam, msg, hwnd) {
+    global ToolHwnd
+    static HoveredHwnd := 0
+
+    ; Define interactive control handles
+    MouseGetPos,,,, CurrCtrlHwnd, 2
+    if (CurrCtrlHwnd = HoveredHwnd)
+        return
+
+    ; Reset old hovered button background to default dark gray
+    if (HoveredHwnd) {
+        GuiControl, +Background343746, %HoveredHwnd%
+        GuiControl, Hide, %HoveredHwnd% ; Redraw bugfix
+        GuiControl, Show, %HoveredHwnd%
+    }
+
+    ; Apply bright accent hover style to active target button text controls
+    WinGetClass, ctrlClass, ahk_id %CurrCtrlHwnd%
+    if (ctrlClass = "Static" && CurrCtrlHwnd != "" && DllCall("GetParent", "Ptr", CurrCtrlHwnd) = ToolHwnd) {
+        GuiControlGet, name, Name, %CurrCtrlHwnd%
+        if (InStr(name, "Btn")) {
+            GuiControl, +Background44475A, %CurrCtrlHwnd%
+            HoveredHwnd := CurrCtrlHwnd
+        } else {
+            HoveredHwnd := 0
+        }
+    } else {
+        HoveredHwnd := 0
+    }
+}
 
 ; ===== Bot Control Logic =====
 StartScript:
@@ -74,18 +141,18 @@ StartScript:
             return
         }
         Running := true
-        GuiControl,, Status, Status : Running
+        GuiControl,, Status, Running
         SetTimer, MainLoop, -1
     }
 return
 
 StopScript:
     Running := false
-    GuiControl,, Status, Status : Stopped
-    GuiControl,, Action, Action : Stopped
+    GuiControl,, Status, Stopped
+    GuiControl,, Action, Stopped
 return
 
-; ===== Save / Load Systems (real arrays now) =====
+; ===== Save / Load Systems =====
 SaveMacro:
     if (IsRecording or Running)
         return
@@ -97,7 +164,7 @@ SaveMacro:
 
     FileSelectFile, ChosenFile, S16, %LastMacroDir%\macro.ini, Save Macro As, Macro Files (*.ini)
     if (ChosenFile = "")
-        return  ; user cancelled
+        return
 
     if !(SubStr(ChosenFile, -3) = ".ini")
         ChosenFile .= ".ini"
@@ -136,7 +203,7 @@ LoadMacro:
 
     FileSelectFile, ChosenFile, 1, %LastMacroDir%, Select Macro File to Load, Macro Files (*.ini)
     if (ChosenFile = "")
-        return  ; user cancelled
+        return
 
     SplitPath, ChosenFile,, LastMacroDir
     IniWrite, %LastMacroDir%, %SettingsFile%, Config, LastDir
@@ -176,19 +243,17 @@ LoadMacro:
         Steps.Push(step)
     }
 
-    GuiControl,, RecStatus, % "Recorded Steps : " Steps.Length()
+    GuiControl,, RecStatus, % Steps.Length() " Steps"
     SplitPath, ChosenFile, ChosenFileName
     GuiControl,, Action, % "Loaded: " ChosenFileName
 
     MsgBox, 64, Success, % "Macro successfully loaded! Ready to run. (" Steps.Length() " steps imported)"
 return
 
-; ===== TinyTask Recording Logic =====
+; ===== Recording Logic =====
 StartRecord:
     if (!Running and !IsRecording)
     {
-        ; Anchor to whatever window is currently active - this should be the game window,
-        ; so click focus on the game BEFORE pressing Record.
         WinGetTitle, ActiveTitle, A
         WinGet, ActiveExe, ProcessName, A
         if (ActiveExe = "" or WinActive("ahk_id " ToolHwnd))
@@ -202,9 +267,9 @@ StartRecord:
 
         IsRecording := true
         Steps := []
-        GuiControl,, Status, Status : RECORDING...
-        GuiControl,, Action, Action : Perform your placement now
-        GuiControl,, RecStatus, Recorded Steps : 0
+        GuiControl,, Status, RECORDING...
+        GuiControl,, Action, Perform actions now
+        GuiControl,, RecStatus, 0 Steps
 
         Hotkey, ~*LButton, On
         Loop, Parse, RecordKeys, `,
@@ -222,8 +287,8 @@ StopRecord:
         Loop, Parse, RecordKeys, `,
             Hotkey, ~*%A_LoopField%, Off
 
-        GuiControl,, Status, Status : Stopped
-        GuiControl,, Action, Action : Record Finished!
+        GuiControl,, Status, Stopped
+        GuiControl,, Action, Record Finished!
     }
 return
 
@@ -231,17 +296,15 @@ MouseClicked:
     if (!IsRecording)
         return
 
-    ; Ignore clicks that land on our own tool window (e.g. clicking "Stop Rec" itself)
     MouseGetPos, mx, my, WinUnderMouse
     if (WinUnderMouse = ToolHwnd)
         return
 
-    ; Convert to coordinates relative to the target window (so it survives the window moving)
     WinGetPos, winX, winY,,, ahk_exe %TargetWinExe%
     if (winX = "")
         WinGetPos, winX, winY,,, %TargetWinTitle%
     if (winX = "")
-        winX := 0, winY := 0  ; fallback: treat as absolute if window can't be found
+        winX := 0, winY := 0
 
     relX := mx - winX
     relY := my - winY
@@ -252,8 +315,8 @@ MouseClicked:
     Steps.Push({type: "Click", x: relX, y: relY, delay: Delay})
 
     LastActionTime := CurrentTime
-    GuiControl,, RecStatus, % "Recorded Steps : " Steps.Length()
-    GuiControl,, Action, % "Last: Click (rel " relX ", " relY ")"
+    GuiControl,, RecStatus, % Steps.Length() " Steps"
+    GuiControl,, Action, % "Last: Click (" relX ", " relY ")"
 return
 
 KeyPressed:
@@ -266,7 +329,7 @@ KeyPressed:
     Steps.Push({type: "Key", key: PressedKey, delay: Delay})
 
     LastActionTime := CurrentTime
-    GuiControl,, RecStatus, % "Recorded Steps : " Steps.Length()
+    GuiControl,, RecStatus, % Steps.Length() " Steps"
     GuiControl,, Action, % "Last: Key (" PressedKey ")"
 return
 
@@ -278,12 +341,13 @@ MainLoop:
         if (Running)
         {
             TotalRounds++
-            GuiControl,, RoundCount, Completed : %TotalRounds% Rounds
+            GuiControl,, RoundCount, %TotalRounds% Rounds
         }
     }
-    GuiControl,, Status, Status : Stopped
+    GuiControl,, Status, Stopped
 return
 
+CloseGui:
 GuiClose:
 ExitApp
 
@@ -304,16 +368,15 @@ FindImage(image, timeout := 300)
 PlayRecordedSteps()
 {
     global Steps, Running, TargetWinExe, TargetWinTitle
-    GuiControl,, Action, Action : Playing Recorded Macro...
+    GuiControl,, Action, Playing Macro...
 
-    ; Resolve the target window's CURRENT position once (handles the window having moved)
     WinGetPos, winX, winY,,, ahk_exe %TargetWinExe%
     if (winX = "")
         WinGetPos, winX, winY,,, %TargetWinTitle%
     if (winX = "")
     {
-        MsgBox, 48, Warning, % "Target window (" TargetWinExe ") not found! Make sure the game is open, then try again."
-        winX := 0, winY := 0  ; fallback: play back as absolute coordinates
+        MsgBox, 48, Warning, % "Target window (" TargetWinExe ") not found!"
+        winX := 0, winY := 0
     }
 
     Loop, % Steps.Length()
@@ -329,7 +392,7 @@ PlayRecordedSteps()
         {
             absX := winX + s.x
             absY := winY + s.y
-            MouseMove, %absX%, %absY%   ; no speed given -> uses SetDefaultMouseSpeed (smooth glide)
+            MouseMove, %absX%, %absY% 
             Click
         }
         else if (s.type = "Key")
@@ -341,94 +404,89 @@ PlayRecordedSteps()
 
 RunStage()
 {
-    if (!Running) return
+if (!Running) return
 
-    ; --- 1. Start Handler: wait for Start button, then click it ---
-    GuiControl,, Action, Action : Waiting for Start Button
+GuiControl,, Action, Waiting for Start Button
     Loop
-    {
-        if (!Running) return
-        start := FindImage("start.png", 500)
-        if (start)
-        {
-            GuiControl,, Action, Action : Clicking Start Button
-            x := start.x + 80
-            y := start.y
-            Click, %x%, %y%
-            Sleep, 500
-            break
-        }
-        Sleep, 500
-    }
-    x := "", y := ""
+{
+if (!Running) return
+start := FindImage("start.png", 500)
+if (start)
+{
+    GuiControl,, Action, Clicking Start Button
+    x := start.x + 80
+    y := start.y
+    Click, %x%, %y%
+    Sleep, 500
+    break
+}
+Sleep, 500
+}
 
-    ; --- 2. Play the recorded macro (every move + every idle delay, exactly as recorded) ---
-    PlayRecordedSteps()
+PlayRecordedSteps()
 
-    ; --- 3. Restage Loop: Here -> Restage ---
-    GuiControl,, Action, Action : Waiting for End Screen
+GuiControl,, Action, Waiting for End Screen
     WaitStart := A_TickCount
-    Loop
-    {
-        if (!Running) return
-        pos := FindImage("here.png", 500)
-        if (pos)
-        {
-            GuiControl,, Action, Action : Found Here!
-            x := pos.x + 70
-            y := pos.y
-            Click, %x%, %y%
-            Sleep, 1000
-            break
-        }
-        if (A_TickCount - WaitStart > 5000)
-        {
-            GuiControl,, Action, Action : Timeout! Force Clicking Here
-            Click, 950, 550
-            Sleep, 1000
-            break
-        }
-        Sleep, 200
-    }
-
-    GuiControl,, Action, Action : Checking Restage Button
-    WaitStart := A_TickCount
-    Loop
-    {
-        if (!Running) return
-        restage := FindImage("restage.png", 500)
-        if (restage)
-        {
-            GuiControl,, Action, Action : Found Restage!
-            x := restage.x
-            y := restage.y
-            Click, %x%, %y%
-            Sleep, 1000
-            break
-        }
-        if (A_TickCount - WaitStart > 15000)
-        {
-            GuiControl,, Action, Action : Timeout! Force Clicking Restage Area
-            Click, 950, 650
-            Sleep, 1000
-            break
-        }
-        Sleep, 200
-    }
-
-    ; --- 4. Loading Handler (Cancel Button) ---
-    GuiControl,, Action, Action : Loading Stage (Waiting for Cancel)
-    Loop
-    {
-        if (!Running) return
-        cancelBtn := FindImage("cancel.png", 500)
-        if (!cancelBtn)
-            break
-        Sleep, 500
-    }
-
-    GuiControl,, Action, Action : Stage Loaded! Ready for Next Round
+Loop
+{
+if (!Running) return
+pos := FindImage("here.png", 500)
+if (pos)
+{
+    GuiControl,, Action, Found Here!
+    x := pos.x + 70
+    y := pos.y
+    Click, %x%, %y%
     Sleep, 1000
+    break
+}
+if (A_TickCount - WaitStart > 5000)
+{
+    GuiControl,, Action, Timeout! Force Clicking Here
+    Click, 950, 550
+    Sleep, 1000
+    break
+}
+Sleep, 200
+}
+
+GuiControl,, Action, Checking Restage Button
+WaitStart := A_TickCount
+Loop
+{
+if (!Running) return
+restage := FindImage("restage.png", 500)
+if (restage)
+{
+    GuiControl,, Action, Found Restage!
+    x := restage.x
+    y := restage.y
+    Click, %x%, %y%
+    Sleep, 1000
+    break
+}
+if (A_TickCount - WaitStart > 15000)
+{
+    GuiControl,, Action, Timeout! Force Clicking Restage Area
+    Click, 950, 650
+    Sleep, 1000
+    break
+}
+Sleep, 200
+}
+
+GuiControl,, Action, Loading Stage (Waiting for Cancel)
+    Loop
+{
+if (!Running) return
+cancelBtn := FindImage("cancel.png", 500)
+if (!cancelBtn)
+    break
+Sleep, 500
+}
+
+GuiControl,, Action, Stage Loaded! Ready
+Sleep, 1000
 }
 
 ; ===== Hotkeys =====
